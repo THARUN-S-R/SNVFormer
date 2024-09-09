@@ -1,0 +1,4 @@
+pandas_plink
+sparsemax
+Cython
+setuptools

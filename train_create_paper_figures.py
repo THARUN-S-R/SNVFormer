@@ -1,0 +1,442 @@
+#!/usr/bin/env python3
+import snp_network
+import os
+import torch
+#import environ
+from snp_input import get_data, get_pretrain_dataset
+from torch import nn
+from net_test_summary import summarise_net
+from snp_network import get_net_savename
+#from environ import 
+saved_nets_dir = 'D:\\final_project\\snvformer-icml22\\SNVFormer\\SNVFormer_ref\\nets\\'
+
+
+def get_pheno_only_params():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_unimputed_combined'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = False
+    parameters['encoding_version'] = 6
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 50
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 0
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 64
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 64
+    parameters['use_linformer'] = True
+    parameters['input_filtering'] = 'random_test_verify'
+    parameters['mask_genotypes'] = True
+    return parameters
+
+def pheno_only():
+    parameters = get_pheno_only_params()
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    os.makedirs(directory_path, exist_ok=True)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+def get_geno_only_params():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_AD_trial_12'
+    parameters['plink_base'] = 'merged_ad11_all'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 20 #30
+    parameters['lr'] = 1e-5
+    parameters['pt_lr'] = 1e-5
+    parameters['encoder_size'] = 2210 #147914 # #65803  # the size of gneotyped_p1e-1
+    # parameters['pretrain_epochs'] = 0  # original version has no pre-training
+    # parameters['num_phenos'] = 3  # exclude phenotypes
+    # parameters['use_phenos'] = True
+    # parameters['output_type'] = 'tok'
+    # parameters['embed_dim'] = 64
+    # parameters['num_heads'] = 4
+    # parameters['num_layers'] = 4
+    # parameters['linformer_k'] = 64
+    # parameters['use_linformer'] = True
+
+    parameters['pretrain_epochs'] = 1
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 96#96#72#120#96
+    parameters['num_heads'] = 4#3#4
+    parameters['num_layers'] = 6
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+    parameters['input_filtering'] = 'random_test_verify'
+    return parameters
+
+def get_geno_only_params_1():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_AD_trial_12'
+    parameters['plink_base'] = 'merged_ad11_all'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 100 #30
+    parameters['lr'] = 1e-5
+    parameters['pt_lr'] = 1e-5
+    parameters['encoder_size'] = 2210 #147914 # #65803  # the size of gneotyped_p1e-1
+    # parameters['pretrain_epochs'] = 0  # original version has no pre-training
+    # parameters['num_phenos'] = 3  # exclude phenotypes
+    # parameters['use_phenos'] = True
+    # parameters['output_type'] = 'tok'
+    # parameters['embed_dim'] = 64
+    # parameters['num_heads'] = 4
+    # parameters['num_layers'] = 4
+    # parameters['linformer_k'] = 64
+    # parameters['use_linformer'] = True
+
+    parameters['pretrain_epochs'] = 1
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = False
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 120#96
+    parameters['num_heads'] = 5#4
+    parameters['num_layers'] = 6
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+    parameters['input_filtering'] = 'random_test_verify'
+    return parameters
+
+
+def get_v6_params():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_unimputed_combined'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = False
+    parameters['encoding_version'] = 6
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 30
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 50
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 64
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 64
+    parameters['use_linformer'] = True
+    parameters['input_filtering'] = 'random_test_verify'
+    return parameters
+
+def get_or_train_net(parameters, train_ids):
+    print('in get_or_train')
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_devices = ['cuda']
+    if os.path.exists(net_file):
+        print("reloading file: {}".format(net_file))
+        net = snp_network.get_transformer(parameters, pretrain_snv_toks)
+        net = nn.DataParallel(net, use_devices)
+        model = torch.load(net_file)
+        net.load_state_dict(model)#
+        #emb=net.embedding.weight
+        #embedding_weight=emb.detach().numpy().copy()
+        #print(f'embedding_weights = {embedding_weight}')
+        net = net.to(use_devices[0])
+    else:
+        print("Training new net, no saved net in file '{}'".format(net_file))
+        net = snp_network.train_everything(parameters)
+        torch.save(net.state_dict(), net_file)
+    return net, pretrain_snv_toks
+
+
+# v6 encoding, pretraining
+def combined_v6():
+    parameters = get_v6_params()
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+
+def geno_only_pretrain():
+    parameters = get_geno_only_params()
+    parameters['pretrain_epochs'] = 50
+    # TODO loading all this here is overkill
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+
+    # reload trained network if it exists
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+
+def geno_only():
+    print('train file 1')
+    parameters = get_geno_only_params()
+    # TODO loading all this here is overkill
+    print('train file 2')
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    print('train file 3')
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+    print('train file 4')
+    print("summarising test-set results")
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    summarise_net(net, test, parameters, net_file)
+
+def geno_only_1():
+    print('train file 1')
+    parameters = get_geno_only_params_1()
+    # TODO loading all this here is overkill
+    print('train file 2')
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    print('train file 3')
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+    print('train file 4')
+    print("summarising test-set results")
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    summarise_net(net, test, parameters, net_file)
+
+def get_pheno_ternary_parameters():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_unimputed_combined'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = False # re-use encoder if one has been trained
+    parameters['encoding_version'] = 5
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 10
+    parameters['num_epochs'] = 100
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 50
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 64
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 64
+    parameters['use_linformer'] = True
+    #parameters['input_filtering'] = 'match_all_phenotypes'
+    parameters['input_filtering'] = 'random_test_verify'
+    return parameters
+
+
+def pheno_ternary():
+    parameters = get_pheno_ternary_parameters()
+    # TODO loading all this here is overkill
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+    #parameters['max_seq_pos'] = pretrain_snv_toks.positions.max()
+    #parameters['output_type'] = 'tok'
+    #parameters['num_toks'] = pretrain_snv_toks.num_toks
+
+    # reload trained network if it exists
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    if os.path.exists(net_file):
+        print("reloading file: {}".format(net_file))
+        net = snp_network.get_transformer(parameters, pretrain_snv_toks)
+        net = nn.DataParallel(net, environ.use_device_ids)
+        net.load_state_dict(torch.load(net_file))
+        net = net.to(environ.use_device_ids[0])
+    else:
+        print("Training new net, no saved net in file '{}'".format(net_file))
+        net = snp_network.train_everything(parameters)
+
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+
+def pheno_96():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'genotyped_p1e-1'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 60
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 1
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 96
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 6
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+
+    # TODO loading all this here is overkill
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+
+    # reload trained network if it exists
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+def pheno_deep():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'genotyped_p1e-1'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 60
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 1
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 96
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 8
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+
+    # TODO loading all this here is overkill
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+
+    # reload trained network if it exists
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+def pheno_v1():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'all_unimputed_combined'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 20
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 0  # original version has no pre-training
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 64
+    parameters['num_heads'] = 4
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 64
+    parameters['use_linformer'] = True
+
+    # TODO loading all this here is overkill
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    pretrain_snv_toks = get_pretrain_dataset(train_ids, parameters)
+
+    # reload trained network if it exists
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+
+    print("summarising test-set results")
+    summarise_net(net, test, parameters, net_file)
+
+from logistic_regression import remove_bmi
+
+def vs_tin_net():
+    parameters = snp_network.default_parameters
+    parameters['embed_dim'] = 96
+    parameters['num_heads'] = 6
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+    parameters['num_epochs'] = 5
+    parameters['pretrain_epochs'] = 0
+    parameters['num_phenos'] = 3
+    parameters['pt_lr'] = 1e-5
+    parameters['lr'] = 1e-4
+    parameters['encoding_version'] = 5
+    parameters['encoder_size'] = 123
+    parameters['batch_size'] = 32
+    parameters['pretrain_base'] = 'tin_fixed_order'
+    parameters['plink_base'] = 'tin_fixed_order'
+    train_ids, train, test_ids, test, verify_ids, verify, geno, pheno, enc_ver = get_data(parameters)
+    net, pretrain_snv_toks = get_or_train_net(parameters, train_ids)
+    print("summarising test-set results")
+    net_file = saved_nets_dir + get_net_savename(parameters)
+    summarise_net(net, test, parameters, net_file)
+
+def mask_most_inputs():
+    parameters = snp_network.default_parameters
+    parameters['pretrain_base'] = 'genotyped_p1e-1'
+    parameters['plink_base'] = 'genotyped_p1e-1'
+    parameters['continue_training'] = False
+    parameters['train_new_encoder'] = True
+    parameters['encoding_version'] = 2
+    parameters['test_frac'] = 0.25
+    parameters['verify_frac'] = 0.05
+    parameters['batch_size'] = 5
+    parameters['num_epochs'] = 60
+    parameters['lr'] = 1e-7
+    parameters['pt_lr'] = 1e-7
+    parameters['encoder_size'] = 65803  # the size of gneotyped_p1e-1
+    parameters['pretrain_epochs'] = 0  # original version has no pre-training
+    parameters['num_phenos'] = 3
+    parameters['use_phenos'] = True
+    parameters['output_type'] = 'tok'
+    parameters['embed_dim'] = 96
+    parameters['num_heads'] = 6
+    parameters['num_layers'] = 4
+    parameters['linformer_k'] = 96
+    parameters['use_linformer'] = True
+
+
+if __name__ == "__main__":
+    home_dir = os.environ.get("HOME")
+    os.chdir("D:\\final_project\\snvformer-icml22\\SNVFormer\\SNVFormer_ref")
+
+    # vs_tin_net()
+    #geno_only()
+    geno_only()
+    # pheno_v1() # done
+    # pheno_ternary()
+    # combined_v6()
+    # pheno_only()
+    #pheno_96()
